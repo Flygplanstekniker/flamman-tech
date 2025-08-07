@@ -110,28 +110,27 @@ async def root():
 @api_router.post("/contact", response_model=ContactResponse)
 async def submit_contact_form(form_data: ContactForm):
     try:
-        # Send email
-        email_sent = await send_contact_email(form_data)
-        
-        if not email_sent:
-            raise HTTPException(
-                status_code=500,
-                detail="Ett fel uppstod när meddelandet skulle skickas. Försök igen senare eller ring direkt."
-            )
-        
-        # Save to database for backup
+        # Save to database first for backup
         contact_dict = form_data.dict()
         contact_dict['id'] = str(uuid.uuid4())
         contact_dict['timestamp'] = datetime.utcnow()
         await db.contact_submissions.insert_one(contact_dict)
         
-        return ContactResponse(
-            success=True,
-            message="Meddelande skickat framgångsrikt! Jag återkommer inom 24 timmar."
-        )
+        # Try to send email
+        email_sent = await send_contact_email(form_data)
         
-    except HTTPException:
-        raise
+        if email_sent:
+            return ContactResponse(
+                success=True,
+                message="Meddelande skickat framgångsrikt! Jag återkommer inom 24 timmar."
+            )
+        else:
+            # Email failed but data is saved
+            return ContactResponse(
+                success=True,
+                message="Ditt meddelande har sparats. Jag återkommer inom 24 timmar. Om det är brådskande, ring direkt."
+            )
+        
     except Exception as e:
         logger.error(f"Contact form submission error: {str(e)}")
         raise HTTPException(
