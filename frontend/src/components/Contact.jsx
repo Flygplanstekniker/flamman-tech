@@ -173,10 +173,11 @@ const Contact = () => {
                 </div>
                 <Button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-black font-semibold py-3 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-orange-500/25"
+                  disabled={isSubmitting}
+                  className="w-full bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-black font-semibold py-3 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-orange-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   <Send className="w-4 h-4 mr-2" />
-                  Skicka meddelande
+                  {isSubmitting ? 'Skickar...' : 'Skicka meddelande'}
                 </Button>
               </form>
             </CardContent>
