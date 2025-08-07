@@ -36,14 +36,32 @@ const Contact = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Mock form submission
-    toast({
-      title: "Meddelande skickat!",
-      description: "Tack för ditt meddelande. Jag återkommer inom 24 timmar.",
-    });
-    setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
+    setIsSubmitting(true);
+    
+    try {
+      const response = await axios.post(`${API}/contact`, formData);
+      
+      if (response.data.success) {
+        toast({
+          title: "Meddelande skickat!",
+          description: response.data.message,
+        });
+        setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.detail || 
+        "Ett fel uppstod när meddelandet skulle skickas. Försök igen senare.";
+      
+      toast({
+        title: "Fel uppstod",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const contactInfo = [
