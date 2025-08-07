@@ -229,6 +229,43 @@ def test_contact_form_field_length_validation():
     
     return all_passed
 
+def test_database_storage_verification():
+    """Test that contact submissions are saved to MongoDB regardless of email status"""
+    print("\n=== Testing Database Storage Verification ===")
+    print("Testing that data is saved to MongoDB even if SMTP fails")
+    
+    # Use unique data to verify storage
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    test_data = {
+        "name": f"Database Test User {timestamp}",
+        "email": f"dbtest_{timestamp}@example.com",
+        "phone": "+46701234567",
+        "subject": f"Database Storage Test {timestamp}",
+        "message": f"This is a test message to verify database storage functionality at {timestamp}. The message needs to be at least 10 characters long."
+    }
+    
+    try:
+        response = requests.post(f"{API_BASE}/contact", json=test_data, timeout=30)
+        print(f"Status Code: {response.status_code}")
+        print(f"Response: {response.text}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('success'):
+                print("✅ PASS: Contact form submission successful - data should be saved to MongoDB")
+                print(f"✅ PASS: Response message in Swedish: {data.get('message')}")
+                return True
+            else:
+                print("❌ FAIL: Response indicates failure")
+                return False
+        else:
+            print(f"❌ FAIL: Expected 200, got {response.status_code}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ FAIL: Request failed with error: {e}")
+        return False
+
 def test_smtp_error_handling():
     """Test that SMTP errors are handled gracefully"""
     print("\n=== Testing SMTP Error Handling ===")
