@@ -107,7 +107,7 @@ user_problem_statement: "Test the new contact form API endpoint for Flamman Tech
 backend:
   - task: "Contact Form API Endpoint"
     implemented: true
-    working: false
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
@@ -116,6 +116,9 @@ backend:
         - working: false
           agent: "testing"
           comment: "CRITICAL ISSUE: Contact form fails completely when SMTP is not configured. The endpoint raises HTTPException(500) before saving data to MongoDB, meaning no contact submissions are stored when email fails. This violates the requirement to handle SMTP failures gracefully. Validation works correctly for all fields (name, email, subject, message required, phone optional, email format validation, field length validation). Swedish error messages are properly implemented. Database connection is working but no data gets saved due to early exception."
+        - working: true
+          agent: "testing"
+          comment: "✅ FIXED: Contact form API endpoint now works perfectly with graceful SMTP error handling. Database save happens BEFORE email attempt (lines 114-117). Returns 200 success even when SMTP fails with appropriate Swedish message: 'Ditt meddelande har sparats. Jag återkommer inom 24 timmar. Om det är brådskande, ring direkt.' All validation still works correctly. Verified data is being saved to MongoDB successfully. All 8 backend tests pass including new database storage verification test."
 
   - task: "Input Data Validation"
     implemented: true
@@ -128,10 +131,13 @@ backend:
         - working: true
           agent: "testing"
           comment: "All validation working correctly: Required fields (name, email, subject, message) properly validated with 422 errors. Email format validation working for invalid formats. Phone field correctly optional. Field length validation working (message min 10 chars, max 2000 chars). FastAPI Pydantic validation is robust."
+        - working: true
+          agent: "testing"
+          comment: "✅ CONFIRMED: All validation continues to work perfectly after the SMTP error handling improvements. Tested all validation scenarios - required fields, email format, field lengths. All return proper 422 validation errors as expected."
 
   - task: "SMTP Email Sending"
     implemented: true
-    working: false
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "medium"
@@ -140,10 +146,13 @@ backend:
         - working: false
           agent: "testing"
           comment: "SMTP not configured in test environment (expected). However, the error handling is not graceful - it completely prevents form submission instead of continuing with database storage. Error message is properly in Swedish: 'Ett fel uppstod när meddelandet skulle skickas. Försök igen senare eller ring direkt.'"
+        - working: true
+          agent: "testing"
+          comment: "✅ FIXED: SMTP error handling is now graceful. When SMTP fails (expected in test environment), the endpoint continues processing and returns success with appropriate message. The send_contact_email function returns False on failure, and the endpoint handles this gracefully by returning a different success message indicating data was saved but email may have failed."
 
   - task: "MongoDB Data Storage"
     implemented: true
-    working: false
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
@@ -152,6 +161,9 @@ backend:
         - working: false
           agent: "testing"
           comment: "Database connection and schema are correct, but no data is being saved because HTTPException is raised before database save operation when SMTP fails. The save logic itself appears correct (UUID generation, timestamp, proper collection name 'contact_submissions')."
+        - working: true
+          agent: "testing"
+          comment: "✅ FIXED: MongoDB data storage now works perfectly. Database save operation moved to happen BEFORE email sending attempt (lines 114-117). Verified that contact submissions are being saved to 'contact_submissions' collection with proper UUID, timestamp, and all form data. Tested and confirmed 3 recent submissions are stored correctly in database."
 
   - task: "Swedish Response Messages"
     implemented: true
@@ -164,6 +176,9 @@ backend:
         - working: true
           agent: "testing"
           comment: "Swedish messages properly implemented. Success message: 'Meddelande skickat framgångsrikt! Jag återkommer inom 24 timmar.' Error message: 'Ett fel uppstod när meddelandet skulle skickas. Försök igen senare eller ring direkt.' Generic error: 'Ett oväntat fel uppstod. Försök igen eller kontakta oss direkt.'"
+        - working: true
+          agent: "testing"
+          comment: "✅ CONFIRMED: Swedish response messages work perfectly. Now has two different success messages: 'Meddelande skickat framgångsrikt! Jag återkommer inom 24 timmar.' (when email succeeds) and 'Ditt meddelande har sparats. Jag återkommer inom 24 timmar. Om det är brådskande, ring direkt.' (when email fails but data saved). Both messages are appropriate and in proper Swedish."
 
 frontend:
   - task: "Frontend Integration"
