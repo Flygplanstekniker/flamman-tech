@@ -101,3 +101,98 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "Test the new contact form API endpoint for Flamman Tech website. I've implemented a POST /api/contact endpoint that should: 1. Accept contact form data (name, email, phone, subject, message) 2. Validate the input data (email format, required fields) 3. Send email via SMTP (though SMTP may not be configured in test environment) 4. Save submission to MongoDB 5. Return success/error response in Swedish"
+
+backend:
+  - task: "Contact Form API Endpoint"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: false
+          agent: "testing"
+          comment: "CRITICAL ISSUE: Contact form fails completely when SMTP is not configured. The endpoint raises HTTPException(500) before saving data to MongoDB, meaning no contact submissions are stored when email fails. This violates the requirement to handle SMTP failures gracefully. Validation works correctly for all fields (name, email, subject, message required, phone optional, email format validation, field length validation). Swedish error messages are properly implemented. Database connection is working but no data gets saved due to early exception."
+
+  - task: "Input Data Validation"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "All validation working correctly: Required fields (name, email, subject, message) properly validated with 422 errors. Email format validation working for invalid formats. Phone field correctly optional. Field length validation working (message min 10 chars, max 2000 chars). FastAPI Pydantic validation is robust."
+
+  - task: "SMTP Email Sending"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: false
+          agent: "testing"
+          comment: "SMTP not configured in test environment (expected). However, the error handling is not graceful - it completely prevents form submission instead of continuing with database storage. Error message is properly in Swedish: 'Ett fel uppstod när meddelandet skulle skickas. Försök igen senare eller ring direkt.'"
+
+  - task: "MongoDB Data Storage"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: false
+          agent: "testing"
+          comment: "Database connection and schema are correct, but no data is being saved because HTTPException is raised before database save operation when SMTP fails. The save logic itself appears correct (UUID generation, timestamp, proper collection name 'contact_submissions')."
+
+  - task: "Swedish Response Messages"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "low"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "Swedish messages properly implemented. Success message: 'Meddelande skickat framgångsrikt! Jag återkommer inom 24 timmar.' Error message: 'Ett fel uppstod när meddelandet skulle skickas. Försök igen senare eller ring direkt.' Generic error: 'Ett oväntat fel uppstod. Försök igen eller kontakta oss direkt.'"
+
+frontend:
+  - task: "Frontend Integration"
+    implemented: false
+    working: "NA"
+    file: "N/A"
+    stuck_count: 0
+    priority: "low"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "testing"
+          comment: "Frontend testing not performed as per testing agent limitations. Backend API is accessible at correct URL from frontend/.env"
+
+metadata:
+  created_by: "testing_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Contact Form API Endpoint"
+    - "MongoDB Data Storage"
+  stuck_tasks:
+    - "Contact Form API Endpoint"
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    - agent: "testing"
+      message: "Completed comprehensive backend testing of contact form API. Found critical issue: SMTP failure prevents entire form submission including database storage. This violates graceful error handling requirement. All validation works correctly. Need main agent to fix error handling logic to save data even when email fails."
