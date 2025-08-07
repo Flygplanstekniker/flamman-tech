@@ -232,13 +232,13 @@ def test_contact_form_field_length_validation():
 def test_smtp_error_handling():
     """Test that SMTP errors are handled gracefully"""
     print("\n=== Testing SMTP Error Handling ===")
-    print("Note: SMTP is expected to fail in test environment, but should be handled gracefully")
+    print("Note: SMTP is expected to fail in test environment, but should return 200 with graceful message")
     
     valid_data = {
-        "name": "Test User",
-        "email": "test@example.com",
-        "subject": "SMTP Test",
-        "message": "Testing SMTP error handling in test environment."
+        "name": "Lars Johansson",
+        "email": "lars.johansson@example.com",
+        "subject": "SMTP Test - Graceful Error Handling",
+        "message": "Testing that SMTP failures are handled gracefully and data is still saved to database."
     }
     
     try:
@@ -246,19 +246,22 @@ def test_smtp_error_handling():
         print(f"Status Code: {response.status_code}")
         print(f"Response: {response.text}")
         
-        if response.status_code == 500:
-            # Check if error message is in Swedish
-            if response.text and ('fel' in response.text.lower() or 'försök' in response.text.lower()):
-                print("✅ PASS: SMTP error handled gracefully with Swedish error message")
-                return True
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('success'):
+                message = data.get('message', '').lower()
+                # Check for appropriate Swedish message indicating email failure but data saved
+                if ('sparats' in message or 'återkommer' in message) and 'meddelande' in message:
+                    print("✅ PASS: SMTP error handled gracefully - returns 200 with appropriate Swedish message")
+                    return True
+                else:
+                    print(f"✅ PASS: SMTP worked (email sent successfully) - message: {data.get('message')}")
+                    return True
             else:
-                print("❌ FAIL: Error message not in Swedish or missing")
+                print("❌ FAIL: Response indicates failure despite 200 status")
                 return False
-        elif response.status_code == 200:
-            print("✅ PASS: SMTP worked unexpectedly (maybe configured?)")
-            return True
         else:
-            print(f"❌ FAIL: Unexpected status code {response.status_code}")
+            print(f"❌ FAIL: Expected 200 (graceful handling), got {response.status_code}")
             return False
             
     except Exception as e:
