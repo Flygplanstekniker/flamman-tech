@@ -107,6 +107,38 @@ Tid: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 async def root():
     return {"message": "Hello World"}
 
+@api_router.post("/contact", response_model=ContactResponse)
+async def submit_contact_form(form_data: ContactForm):
+    try:
+        # Send email
+        email_sent = await send_contact_email(form_data)
+        
+        if not email_sent:
+            raise HTTPException(
+                status_code=500,
+                detail="Ett fel uppstod när meddelandet skulle skickas. Försök igen senare eller ring direkt."
+            )
+        
+        # Save to database for backup
+        contact_dict = form_data.dict()
+        contact_dict['id'] = str(uuid.uuid4())
+        contact_dict['timestamp'] = datetime.utcnow()
+        await db.contact_submissions.insert_one(contact_dict)
+        
+        return ContactResponse(
+            success=True,
+            message="Meddelande skickat framgångsrikt! Jag återkommer inom 24 timmar."
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Contact form submission error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Ett oväntat fel uppstod. Försök igen eller kontakta oss direkt."
+        )
+
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):
     status_dict = input.dict()
