@@ -346,6 +346,7 @@ def run_all_tests():
         ("Required Fields Validation", test_contact_form_missing_required_fields),
         ("Email Format Validation", test_contact_form_invalid_email),
         ("Field Length Validation", test_contact_form_field_length_validation),
+        ("Database Storage Verification", test_database_storage_verification),
         ("SMTP Error Handling", test_smtp_error_handling),
     ]
     
