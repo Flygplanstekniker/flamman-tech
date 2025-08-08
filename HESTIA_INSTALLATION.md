@@ -1,15 +1,26 @@
-# Flamman Tech Website - Hestia Installation Guide
+# 🚀 Flamman Tech Website - Komplett Hestia Installationsguide
 
-## Översikt
-Denna guide visar hur du installerar din Flamman Tech-webbplats på en Hestia Control Panel server.
+## ⚠️ LÄAS DETTA FÖRST
+**Denna guide tar dig steg-för-steg genom HELA installationsprocessen. Följ EXAKT i ordning - hoppa INTE över steg.**
 
-## Systemkrav
-- VPS/Server med Ubuntu 20.04+ 
-- Hestia Control Panel installerat
-- Node.js 18+
-- Python 3.8+
-- MongoDB eller extern MongoDB-tjänst
-- SSL-certifikat (Let's Encrypt via Hestia)
+**Uppskattat tid:** 45-60 minuter  
+**Svårighetsgrad:** Medel (grundläggande Linux-kunskaper krävs)
+
+## 📋 Vad du behöver innan du börjar
+✅ En VPS/server med Ubuntu 20.04 eller senare  
+✅ Hestia Control Panel redan installerat och fungerande  
+✅ Root-access till servern (SSH)  
+✅ Din domän (t.ex. flammantech.se) som pekar på servern  
+✅ Gmail-konto för e-postfunktion (alternativt annan SMTP)  
+
+## 📁 Viktiga filsökvägar att komma ihåg
+```
+/home/admin/web/DIN-DOMÄN.se/flamman-tech/     ← Projektmapp
+/home/admin/web/DIN-DOMÄN.se/public_html/      ← Webbplats-filer
+/var/log/nginx/                                ← Nginx-loggar
+```
+
+---
 
 ## Del 1: Förbereda Servern
 
