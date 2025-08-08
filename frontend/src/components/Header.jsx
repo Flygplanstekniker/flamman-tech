@@ -37,7 +37,7 @@ const Header = ({ activeTab, setActiveTab }) => {
             <img 
               src={logoUrl} 
               alt="Flamman Tech" 
-              className="h-12 w-auto filter drop-shadow-lg"
+              className="h-20 w-auto filter drop-shadow-lg"
             />
           </div>
 
