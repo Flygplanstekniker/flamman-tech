@@ -506,93 +506,231 @@ sudo crontab -e
 # Lägg till denna rad: 0 2 * * * /home/admin/backup-flamman.sh
 ```
 
-## Del 9: Felsökning
+---
 
-### 9.1 Vanliga problem
+## 🚨 FELSÖKNING - Om något går fel
 
-**Problem: Backend startar inte**
+### ❌ Problem: "Backend startar inte"
 ```bash
-# Kolla PM2-status och loggar
+# Steg 1: Kolla PM2-status
 pm2 status
-pm2 logs flamman-tech-backend
 
-# Kolla Python-dependencies
+# Steg 2: Kolla detaljerade loggar
+pm2 logs flamman-tech-backend --lines 50
+
+# Steg 3: Testa manuell start
 cd /home/admin/web/flammantech.se/flamman-tech/backend
 source venv/bin/activate
-python -c "import motor; print('OK')"
+python server.py
+
+# Steg 4: Kolla Python-dependencies
+python -c "import motor; print('MongoDB OK')"
+python -c "import fastapi; print('FastAPI OK')"
 ```
 
-**Problem: Frontend visar inte rätt**
-```bash
-# Kontrollera att build-filerna finns
-ls -la /home/admin/web/flammantech.se/public_html/
+**Vanliga lösningar:**
+- **Virtual env inte aktivt:** Kör `source venv/bin/activate`
+- **Dependencies saknas:** Kör `pip install -r requirements.txt`
+- **Felaktig sökväg i PM2:** Kontrollera `ecosystem.config.js`
 
-# Kontrollera Nginx-konfiguration
+### ❌ Problem: "Frontend visar inte rätt sida"
+```bash
+# Steg 1: Kontrollera filer
+ls -la /home/admin/web/flammantech.se/public_html/index.html
+
+# Steg 2: Testa Nginx-konfiguration
 sudo nginx -t
 
-# Starta om Nginx
-sudo systemctl restart nginx
-```
+# Steg 3: Kolla Nginx-loggar
+sudo tail -f /var/log/nginx/error.log
 
-**Problem: Email fungerar inte**
-- Kontrollera att du använder Gmail App Password
-- Verifiera SMTP-inställningar i backend/.env
-- Kolla backend-loggar för email-fel
-
-**Problem: API-anrop fungerar inte**
-```bash
-# Testa API direkt
-curl https://flammantech.se/api/
-
-# Kolla Nginx proxy-konfiguration
-sudo nano /home/admin/conf/web/nginx.flammantech.se.conf
-```
-
-### 9.2 Starta om allt
-```bash
-# Starta om backend
-pm2 restart flamman-tech-backend
-
-# Starta om Nginx
-sudo systemctl restart nginx
-
-# Starta om MongoDB
-sudo systemctl restart mongod
-```
-
-## Del 10: Uppdateringar
-
-### 10.1 Uppdatera frontend
-```bash
+# Steg 4: Bygg om frontend
 cd /home/admin/web/flammantech.se/flamman-tech/frontend
-
-# Bygg nya versionen
 yarn build
-
-# Kopiera nya filer
 sudo cp -r build/* /home/admin/web/flammantech.se/public_html/
 ```
 
-### 10.2 Uppdatera backend
+### ❌ Problem: "Email fungerar inte"
 ```bash
+# Steg 1: Testa SMTP-uppgifter
 cd /home/admin/web/flammantech.se/flamman-tech/backend
-
-# Aktivera virtual environment
 source venv/bin/activate
-
-# Uppdatera dependencies om nödvändigt
-pip install -r requirements.txt
-
-# Starta om backend
-pm2 restart flamman-tech-backend
+python -c "
+import smtplib
+server = smtplib.SMTP('smtp.gmail.com', 587)
+server.starttls()
+server.login('ditt.email@gmail.com', 'ditt_app_password')
+print('SMTP OK')
+server.quit()
+"
 ```
 
-## Support
+**Vanliga lösningar:**
+- **Fel lösenord:** Använd Gmail App Password, inte vanligt lösenord
+- **2FA inte aktivt:** Aktivera tvåstegsverifiering på Gmail
+- **Felaktigt EMAIL_TO:** Kontrollera att melvin@flammantech.se stämmer
 
-Om du stöter på problem, kontakta Melvin på:
-- **Email**: melvin@flammantech.se
-- **Telefon**: 0703456746
+### ❌ Problem: "API-anrop fungerar inte (404-fel)"
+```bash
+# Steg 1: Testa backend direkt
+curl http://localhost:8001/api/
+
+# Steg 2: Testa via domän
+curl https://flammantech.se/api/
+
+# Steg 3: Kontrollera Nginx proxy-konfiguration
+sudo nano /home/admin/conf/web/nginx.flammantech.se.conf
+
+# Steg 4: Starta om Nginx
+sudo systemctl restart nginx
+```
+
+### ❌ Problem: "SSL-certifikat fungerar inte"
+1. Gå till **Web** i Hestia-panelen
+2. Klicka på din domän
+3. Klicka **"Edit"**
+4. Aktivera **"SSL Support"**
+5. Aktivera **"Let's Encrypt Support"**
+6. Vänta 2-3 minuter
+7. Testa: `curl -I https://flammantech.se`
+
+### ❌ Problem: "MongoDB anslutning misslyckas"
+```bash
+# Steg 1: Kontrollera MongoDB-status
+sudo systemctl status mongod
+
+# Steg 2: Starta MongoDB om det inte körs
+sudo systemctl start mongod
+
+# Steg 3: Testa anslutning
+mongo --eval "db.runCommand('ping')"
+
+# Steg 4: Kolla MongoDB-loggar
+sudo tail -f /var/log/mongodb/mongod.log
+```
+
+### 🔄 Starta om ALLT (sista utvägen)
+```bash
+# Starta om alla services
+sudo systemctl restart mongod
+sudo systemctl restart nginx
+pm2 restart flamman-tech-backend
+
+# Kontrollera status
+sudo systemctl status mongod
+sudo systemctl status nginx
+pm2 status
+```
 
 ---
 
-**Lycka till med din nya webbplats! 🚀**
+## 🔧 UNDERHÅLL OCH UPPDATERINGAR
+
+### 📊 Övervaka webbplatsen
+```bash
+# Kolla loggar regelbundet
+pm2 logs flamman-tech-backend
+sudo tail -f /var/log/nginx/access.log
+
+# Kolla PM2-status
+pm2 status
+
+# Kolla systemresurser
+top
+df -h
+```
+
+### 🔄 Uppdatera webbplatsen
+
+**För frontend-ändringar:**
+```bash
+cd /home/admin/web/flammantech.se/flamman-tech/frontend
+yarn build
+sudo cp -r build/* /home/admin/web/flammantech.se/public_html/
+```
+
+**För backend-ändringar:**
+```bash
+cd /home/admin/web/flammantech.se/flamman-tech/backend
+source venv/bin/activate
+pm2 restart flamman-tech-backend
+```
+
+### 📋 Månadsvis underhåll
+```bash
+# Uppdatera system
+sudo apt update && sudo apt upgrade -y
+
+# Kolla diskutrymme
+df -h
+
+# Kolla backup-storlek
+du -sh /home/admin/backups/
+
+# Optimera MongoDB (om det blir långsamt)
+mongo flamman_tech --eval "db.runCommand({compact: 'contact_submissions'})"
+```
+
+---
+
+## 📞 SUPPORT OCH HJÄLP
+
+### 🆘 Om du fortfarande har problem:
+
+**Kontakta Melvin:**
+- **📧 Email:** melvin@flammantech.se  
+- **📱 Telefon:** 0703456746
+
+**Innan du ringer/mailar - ha detta redo:**
+1. Vilken del av guiden du fastnade på
+2. Exakt felmeddelande du får
+3. Output från dessa kommandon:
+   ```bash
+   pm2 status
+   sudo systemctl status nginx
+   sudo systemctl status mongod
+   curl -I https://flammantech.se/api/
+   ```
+
+### 📚 Användbara kommandon att komma ihåg
+```bash
+# Starta om backend
+pm2 restart flamman-tech-backend
+
+# Kolla backend-loggar
+pm2 logs flamman-tech-backend
+
+# Kolla Nginx-status
+sudo systemctl status nginx
+
+# Kolla MongoDB-status
+sudo systemctl status mongod
+
+# Testa API
+curl https://flammantech.se/api/
+
+# Kolla diskutrymme
+df -h
+
+# Kolla systemresurser
+top
+```
+
+---
+
+## 🎯 SAMMANFATTNING - Vad du precis gjort:
+
+✅ **Installerat en komplett webbplats** med React frontend och Python backend  
+✅ **Konfigurerat databas** (MongoDB) för att spara kontaktformulär  
+✅ **Aktiverat e-postfunktion** så du får mail när kunder kontaktar dig  
+✅ **Säkrat webbplatsen** med SSL och brandvägg  
+✅ **Satt upp automatisk backup** för dina data  
+✅ **Konfigurerat övervakning** så webbplatsen startar automatiskt  
+
+**Din webbplats är nu LIVE på:** https://flammantech.se 🚀
+
+**Grattis, Melvin! Du har nu en professionell webbplats för ditt företag! 🎉**
+
+---
+
+*Skapad av Emergent AI - Flamman Tech Website Installation Guide v1.0*
