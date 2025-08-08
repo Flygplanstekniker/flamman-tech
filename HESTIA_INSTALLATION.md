@@ -22,150 +22,243 @@
 
 ---
 
-## Del 1: Förbereda Servern
+## 🔥 STEG 1: Logga in och förbered Hestia
 
-### 1.1 Logga in på Hestia
+### 1.1 SSH-inloggning (OBLIGATORISK)
 ```bash
-# Logga in via SSH till din server
-ssh root@din-server-ip
+# Byt ut "DIN-SERVER-IP" mot din riktiga server-IP
+ssh root@DIN-SERVER-IP
 
-# Eller använd Hestia webbgränssnittet på:
-https://din-server-ip:8083
+# Exempel: ssh root@192.168.1.100
 ```
 
-### 1.2 Skapa webbplats i Hestia
-1. Gå till **Web** i Hestia-panelen
-2. Klicka **Add Web Domain**
-3. Ange din domän (t.ex. `flammantech.se`)
-4. Aktivera SSL (Let's Encrypt)
-5. Välj **PHP 8.1+** som backend
+**⚠️ VIKTIGT:** Du MÅSTE använda SSH för denna installation. Hestia File Manager är inte tillräckligt.
 
-### 1.3 Installera Node.js
+### 1.2 Skapa webbplats i Hestia (GÖR DETTA FÖRST)
+
+**Via Hestia webbgränssnitt (https://DIN-SERVER-IP:8083):**
+
+1. **Logga in** på Hestia-panelen
+2. Klicka **"Web"** i vänster meny
+3. Klicka **"ADD WEB DOMAIN"** (stor blå knapp)
+4. **Domännamn:** Skriv `flammantech.se` (eller din domän)
+5. **Aliases:** Lämna tom
+6. **Backend template:** Välj **"PHP-8_1"** 
+7. **Proxy template:** Välj **"default"**
+8. **✅ Kryssa i "Enable SSL support"**
+9. **✅ Kryssa i "Enable Let's Encrypt support"**
+10. Klicka **"Add"**
+
+**🔍 Verifiera:** Gå till https://flammantech.se - du ska se en Hestia standard-sida.
+
+---
+
+## 🛠️ STEG 2: Installera nödvändig programvara
+
+### 2.1 Uppdatera systemet (OBLIGATORISKT)
 ```bash
-# Installera Node.js 18 LTS
+# Kör dessa kommandon i SSH:
+sudo apt update && sudo apt upgrade -y
+```
+
+### 2.2 Installera Node.js 18 LTS (RÄTT VERSION)
+```bash
+# Installera Node.js repository
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+
+# Installera Node.js
 sudo apt-get install -y nodejs
 
-# Verifiera installation
+# ✅ VERIFIERA - dessa ska visa version 18.x:
 node --version
 npm --version
 ```
 
-### 1.4 Installera Python och paket
-```bash
-# Python ska redan vara installerat, installera pip och venv
-sudo apt update
-sudo apt install python3-pip python3-venv
+**🚨 Om Node.js-version är fel:** Starta om SSH-sessionen och försök igen.
 
-# Installera PM2 för process-hantering
+### 2.3 Installera Python och verktyg
+```bash
+# Installera Python-verktyg
+sudo apt install -y python3-pip python3-venv python3-dev
+
+# Installera PM2 och Yarn globalt
 sudo npm install -g pm2 yarn
+
+# ✅ VERIFIERA:
+python3 --version  # Ska visa 3.8+
+pip3 --version
+pm2 --version
+yarn --version
 ```
 
-### 1.5 Installera MongoDB
+### 2.4 Installera MongoDB (KRITISKT STEG)
+
+**⚠️ OBSERVERA:** Detta kan ta 5-10 minuter
+
 ```bash
-# Installera MongoDB Community Edition
+# Lägg till MongoDB repository key
 wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add -
+
+# Lägg till MongoDB repository (Ubuntu 20.04/focal)
 echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+
+# Uppdatera package list
 sudo apt-get update
+
+# Installera MongoDB
 sudo apt-get install -y mongodb-org
 
-# Starta MongoDB
+# Starta och aktivera MongoDB
 sudo systemctl start mongod
 sudo systemctl enable mongod
+
+# ✅ VERIFIERA MongoDB:
+sudo systemctl status mongod
+# Du ska se "active (running)" i grön text
 ```
 
-## Del 2: Ladda upp och Installera Applikationen
-
-### 2.1 Förbered filerna
-På din lokala dator, skapa en zip-fil med:
-```
-flamman-tech/
-├── frontend/
-│   ├── src/
-│   ├── public/
-│   ├── package.json
-│   └── ...alla React-filer
-├── backend/
-│   ├── server.py
-│   ├── requirements.txt
-│   └── .env.example
-└── HESTIA_INSTALLATION.md
-```
-
-### 2.2 Ladda upp till servern
+**🚨 Om MongoDB inte startar:**
 ```bash
-# Navigera till din webbplats-mapp i Hestia
+sudo journalctl -u mongod  # Kolla vad som gick fel
+```
+
+---
+
+## 📦 STEG 3: Ladda upp och förbered projektfiler
+
+### 3.1 Skapa projektstruktur
+```bash
+# Navigera till din domäns mapp (ändra flammantech.se till din domän)
 cd /home/admin/web/flammantech.se/
 
-# Skapa projekt-mapp
+# Skapa projektmapp
 sudo mkdir -p flamman-tech
 cd flamman-tech
 
-# Ladda upp och packa upp dina filer här
-# (använd scp, rsync, eller Hestia File Manager)
+# ✅ VERIFIERA var du är:
+pwd
+# Ska visa: /home/admin/web/flammantech.se/flamman-tech
 ```
 
-### 2.3 Sätt rätt filrättigheter
+### 3.2 Ladda upp projektfiler
+
+**ALTERNATIV A: Använd scp från din lokala dator**
+```bash
+# På din LOKALA dator, inte servern:
+scp -r /path/to/flamman-tech/* root@DIN-SERVER-IP:/home/admin/web/flammantech.se/flamman-tech/
+```
+
+**ALTERNATIV B: Använd Hestia File Manager**
+1. Gå till **File Manager** i Hestia
+2. Navigera till `/home/admin/web/flammantech.se/flamman-tech/`
+3. Ladda upp alla projektfiler
+
+**ALTERNATIV C: Klona från Git (om du har projektet på GitHub)**
+```bash
+# Om du har projektet på GitHub:
+git clone https://github.com/ditt-användarnamn/flamman-tech.git .
+```
+
+### 3.3 Sätt rätta filrättigheter (OBLIGATORISKT)
 ```bash
 # Sätt rätt ägare och rättigheter
 sudo chown -R admin:admin /home/admin/web/flammantech.se/flamman-tech/
 sudo chmod -R 755 /home/admin/web/flammantech.se/flamman-tech/
+
+# ✅ VERIFIERA filstruktur:
+ls -la /home/admin/web/flammantech.se/flamman-tech/
+# Du ska se: frontend/ och backend/ mappar
 ```
 
-## Del 3: Konfigurera Backend
+---
 
-### 3.1 Skapa Python virtual environment
+## ⚙️ STEG 4: Konfigurera Backend (KRITISKT STEG)
+
+### 4.1 Installera Python-dependencies
 ```bash
+# Gå till backend-mappen
 cd /home/admin/web/flammantech.se/flamman-tech/backend
 
-# Skapa virtual environment
+# ✅ VERIFIERA att requirements.txt finns:
+ls -la requirements.txt
+
+# Skapa Python virtual environment
 python3 -m venv venv
 
 # Aktivera virtual environment
 source venv/bin/activate
 
-# Installera dependencies
+# ✅ VERIFIERA att virtual env är aktivt:
+which python
+# Ska visa: /home/admin/web/flammantech.se/flamman-tech/backend/venv/bin/python
+
+# Installera dependencies (kan ta 3-5 minuter)
 pip install -r requirements.txt
 ```
 
-### 3.2 Konfigurera miljövariabler
+**🚨 Om pip install misslyckas:**
 ```bash
-# Kopiera exempel-fil
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+### 4.2 Konfigurera environment-variabler (SUPER VIKTIGT)
+
+```bash
+# Kopiera exempel-filen
 cp .env.example .env
 
-# Redigera .env-fil
+# Redigera .env-filen
 nano .env
 ```
 
-Fyll i följande i `.env`:
+**Fyll i EXAKT detta i .env-filen:**
 ```env
-# Database Configuration
+# Database Configuration (ÄNDRA INTE DESSA)
 MONGO_URL=mongodb://localhost:27017
 DB_NAME=flamman_tech
 
-# Email Configuration - VIKTIGT!
+# Email Configuration (ÄNDRA TILL DINA UPPGIFTER)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=ditt.gmail@gmail.com
-SMTP_PASSWORD=ditt_app_lösenord
+SMTP_PASSWORD=ditt_app_lösenord_från_gmail
 EMAIL_FROM=noreply@flammantech.se
 EMAIL_TO=melvin@flammantech.se
 ```
 
-### 3.3 Testa backend
-```bash
-# Testa att backend startar
-python server.py
+**🔥 GMAIL APP PASSWORD - SUPER VIKTIGT:**
 
-# Om allt fungerar, stoppa med Ctrl+C
+1. Gå till https://myaccount.google.com/security
+2. Aktivera **2-Step Verification** (tvåstegsverifiering)
+3. Gå till https://myaccount.google.com/apppasswords
+4. Skapa ett **App Password** för "Mail"
+5. **Använd detta 16-siffrigt lösenord i SMTP_PASSWORD** (inte ditt vanliga lösenord)
+
+**Spara filen:** Ctrl+X, sedan Y, sedan Enter
+
+### 4.3 Testa backend (VIKTIGT TEST)
+```bash
+# Kontrollera att du fortfarande är i backend-mappen och virtual env är aktivt
+pwd  # Ska visa: /home/admin/web/flammantech.se/flamman-tech/backend
+which python  # Ska visa venv-sökvägen
+
+# Testa backend-start
+python server.py
 ```
 
-### 3.4 Skapa PM2-konfiguration för backend
+**✅ Om det fungerar:** Du ser "Application startup complete" och "Uvicorn running on..."
+**🚨 Om det inte fungerar:** Kolla felmeddelandet och fixa innan du fortsätter
+
+**Stoppa backend:** Ctrl+C
+
+### 4.4 Skapa PM2-konfiguration
 ```bash
 # Skapa PM2 ecosystem-fil
 nano ecosystem.config.js
 ```
 
+**Kopiera EXAKT detta (ändra sökvägen om din domän är annorlunda):**
 ```javascript
 module.exports = {
   apps: [{
@@ -184,144 +277,233 @@ module.exports = {
 };
 ```
 
-## Del 4: Konfigurera Frontend
+**Spara:** Ctrl+X, Y, Enter
 
-### 4.1 Installera frontend-dependencies
+---
+
+## 🎨 STEG 5: Konfigurera Frontend
+
+### 5.1 Installera frontend-dependencies
 ```bash
+# Gå till frontend-mappen
 cd /home/admin/web/flammantech.se/flamman-tech/frontend
 
-# Installera paket
+# ✅ VERIFIERA att package.json finns:
+ls -la package.json
+
+# Installera dependencies med Yarn (kan ta 3-5 minuter)
 yarn install
 ```
 
-### 4.2 Konfigurera miljövariabler
+**🚨 Om yarn install misslyckas:**
+```bash
+rm -rf node_modules package-lock.json
+yarn install
+```
+
+### 5.2 Konfigurera frontend environment
 ```bash
 # Skapa .env fil för frontend
 nano .env
 ```
 
+**Skriv EXAKT detta (byt flammantech.se mot din domän):**
 ```env
 REACT_APP_BACKEND_URL=https://flammantech.se
 ```
 
-### 4.3 Bygg frontend för produktion
+**Spara:** Ctrl+X, Y, Enter
+
+### 5.3 Bygg frontend för produktion
 ```bash
-# Bygg applikationen
+# Bygg React-applikationen (kan ta 2-3 minuter)
 yarn build
 
-# Kopiera build-filerna till Hestia web root
+# ✅ VERIFIERA att build skapades:
+ls -la build/
+# Du ska se många filer inklusive index.html
+
+# Kopiera build-filerna till webbplats-mappen
 sudo cp -r build/* /home/admin/web/flammantech.se/public_html/
+
+# ✅ VERIFIERA kopiering:
+ls -la /home/admin/web/flammantech.se/public_html/
+# Du ska se index.html och andra filer
 ```
 
-## Del 5: Konfigurera Nginx (Reverse Proxy)
+---
 
-### 5.1 Skapa Nginx-konfiguration
+## 🌐 STEG 6: Konfigurera Nginx (REVERSE PROXY)
+
+### 6.1 Redigera Nginx-konfiguration
 ```bash
-# Redigera Nginx-konfiguration för din domän
+# Redigera Nginx-konfiguration (ändra flammantech.se till din domän)
 sudo nano /home/admin/conf/web/nginx.flammantech.se.conf
 ```
 
-Lägg till följande före den befintliga konfigurationen:
+**Hitta raden som börjar med `server {` och lägg till FÖRE den:**
+
 ```nginx
-# API Proxy för backend
-location /api/ {
-    proxy_pass http://localhost:8001;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection 'upgrade';
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_cache_bypass $http_upgrade;
+# API Proxy för backend - LÄGG TILL DETTA LÄNGST UPP I FILEN
+server {
+    listen 80;
+    server_name flammantech.se www.flammantech.se;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name flammantech.se www.flammantech.se;
+    
+    # SSL konfiguration (Hestia hanterar detta)
+    
+    # API Proxy för backend
+    location /api/ {
+        proxy_pass http://localhost:8001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+    
+    # Statiska filer
+    location / {
+        root /home/admin/web/flammantech.se/public_html;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
 }
 ```
 
-### 5.2 Starta om Nginx
+**🚨 KRITISKT:** Se till att ändra `flammantech.se` till din domän överallt!
+
+**Spara:** Ctrl+X, Y, Enter
+
+### 6.2 Testa och starta om Nginx
 ```bash
+# Testa Nginx-konfiguration
+sudo nginx -t
+# ✅ Du ska se: "syntax is ok" och "test is successful"
+
+# Om test ok, starta om Nginx
 sudo systemctl restart nginx
+
+# ✅ Kontrollera Nginx-status:
+sudo systemctl status nginx
+# Ska visa "active (running)"
 ```
 
-## Del 6: Starta Services
+---
 
-### 6.1 Starta backend med PM2
+## 🚀 STEG 7: Starta Services och Testa
+
+### 7.1 Starta backend med PM2
 ```bash
+# Gå tillbaka till backend-mappen
 cd /home/admin/web/flammantech.se/flamman-tech/backend
 
-# Starta backend
+# Starta backend med PM2
 pm2 start ecosystem.config.js
 
-# Spara PM2-konfiguration
+# ✅ Kontrollera PM2-status:
+pm2 status
+# Du ska se "flamman-tech-backend" med status "online"
+
+# Spara PM2-konfiguration för automatisk start
 pm2 save
 
 # Sätt PM2 att starta vid systemstart
 pm2 startup
+# ✅ Följ instruktionerna som visas
 ```
 
-### 6.2 Verifiera att allt fungerar
+### 7.2 KRITISK TESTNING
 ```bash
-# Kolla PM2-status
-pm2 status
+# Test 1: Testa MongoDB
+mongo --eval "db.runCommand('ping')"
+# ✅ Ska visa: { "ok" : 1 }
 
-# Kolla PM2-loggar
-pm2 logs flamman-tech-backend
+# Test 2: Testa backend lokalt
+curl http://localhost:8001/api/
+# ✅ Ska visa: {"message":"Hello World"}
 
-# Testa API
+# Test 3: Testa backend via domän
 curl https://flammantech.se/api/
+# ✅ Ska visa: {"message":"Hello World"}
+
+# Test 4: Kontrollera hemsida
+curl -I https://flammantech.se
+# ✅ Ska visa: HTTP/2 200
 ```
 
-## Del 7: SSL och Säkerhet
+**🎉 Om alla tester fungerar: Din webbplats är LIVE!**
 
-### 7.1 SSL-certifikat
-Hestia bör redan ha skapat ett Let's Encrypt SSL-certifikat. Om inte:
+### 7.3 Slutlig verifiering
+1. **Öppna webbläsare** och gå till `https://flammantech.se`
+2. **Testa navigation** - klicka på "Tjänster", "Info", "Kontakt"
+3. **Testa kontaktformuläret** - fyll i och skicka
+4. **Kontrollera email** - du ska få ett mail till melvin@flammantech.se
 
-1. Gå till **Web** i Hestia
-2. Klicka på din domän
-3. Aktivera **SSL Support**
-4. Välj **Let's Encrypt**
+---
 
-### 7.2 Firewall-konfiguration
+## 🔒 STEG 8: Säkerhet och optimering
+
+### 8.1 Brandväggsinställningar
 ```bash
-# Kontrollera att port 8001 INTE är öppen utåt
+# Kontrollera brandvägg
 sudo ufw status
 
-# Om port 8001 är öppen, stäng den (bara Nginx ska komma åt den)
+# Om port 8001 är öppen utåt, stäng den (säkerhetsrisk)
 sudo ufw deny 8001
+
+# Öppna endast nödvändiga portar
+sudo ufw allow 22    # SSH
+sudo ufw allow 80    # HTTP
+sudo ufw allow 443   # HTTPS
+sudo ufw allow 8083  # Hestia panel
 ```
 
-## Del 8: Övervakning och Underhåll
-
-### 8.1 Loggar
+### 8.2 Automatisk backup-setup
 ```bash
-# Backend-loggar via PM2
-pm2 logs flamman-tech-backend
+# Skapa backup-mapp
+sudo mkdir -p /home/admin/backups
 
-# Nginx-loggar
-sudo tail -f /var/log/nginx/access.log
-sudo tail -f /var/log/nginx/error.log
-
-# MongoDB-loggar
-sudo tail -f /var/log/mongodb/mongod.log
+# Skapa backup-script
+sudo nano /home/admin/backup-flamman.sh
 ```
 
-### 8.2 Backup-script
-Skapa ett enkelt backup-script för MongoDB:
+**Backup-script innehåll:**
 ```bash
 #!/bin/bash
-# /home/admin/backup-flamman.sh
+# Backup script för Flamman Tech
 
 DATE=$(date +"%Y%m%d_%H%M%S")
-mongodump --db flamman_tech --out /home/admin/backups/mongo_$DATE
-find /home/admin/backups -name "mongo_*" -mtime +7 -delete
+BACKUP_DIR="/home/admin/backups"
+
+# Backup MongoDB
+mongodump --db flamman_tech --out $BACKUP_DIR/mongo_$DATE
+
+# Backup website files
+tar -czf $BACKUP_DIR/website_$DATE.tar.gz /home/admin/web/flammantech.se/flamman-tech/
+
+# Ta bort backuper äldre än 7 dagar
+find $BACKUP_DIR -name "mongo_*" -mtime +7 -delete
+find $BACKUP_DIR -name "website_*" -mtime +7 -delete
+
+echo "Backup completed: $DATE"
 ```
 
 ```bash
 # Gör scriptet körbart
-chmod +x /home/admin/backup-flamman.sh
+sudo chmod +x /home/admin/backup-flamman.sh
 
-# Lägg till i crontab (körs dagligen)
-crontab -e
-# Lägg till: 0 2 * * * /home/admin/backup-flamman.sh
+# Lägg till i crontab för daglig backup
+sudo crontab -e
+# Lägg till denna rad: 0 2 * * * /home/admin/backup-flamman.sh
 ```
 
 ## Del 9: Felsökning
