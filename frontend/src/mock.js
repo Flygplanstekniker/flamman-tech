@@ -6,7 +6,7 @@ export const mockData = {
     contact: {
       phone: "0703456746",
       email: "melvin@flammantech.se",
-      address: "Jönköping"
+      address: "Bankeryd"
     }
   },
   services: [
