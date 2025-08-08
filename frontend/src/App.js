@@ -6,6 +6,7 @@ import Hero from "./components/Hero";
 import Services from "./components/Services";
 import Info from "./components/Info";
 import Contact from "./components/Contact";
+import Footer from "./components/Footer";
 
 function App() {
   const [activeTab, setActiveTab] = useState('hem');
@@ -31,6 +32,7 @@ function App() {
       <main className="pt-0">
         {renderContent()}
       </main>
+      <Footer />
       <Toaster />
     </div>
   );
